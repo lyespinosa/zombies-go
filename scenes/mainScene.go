@@ -41,11 +41,17 @@ const (
 )
 
 func StartGame(ctx *scene.Context) {
+
+	generateGround()
+
 	char := createPlayer(ctx)
 	go playerBehavior(ctx, char)
 	go camera(ctx, char)
 	go enemyGenerator(ctx)
 
+}
+
+func generateGround() {
 	sprites, err := render.GetSheet("ground.png")
 	dlog.ErrorCheck(err)
 	sheet = sprites.ToSprites()
@@ -180,21 +186,21 @@ func NewEnemy(ctx *scene.Context) {
 		"left":  enemyFrame.Copy().Modify(mod.FlipX),
 		"right": enemyFrame,
 	})
-	enemy := entities.New(ctx,
+	hitbox := entities.New(ctx,
 		entities.WithRect(floatgeom.NewRect2WH(x, y, 30, 45)),
 		entities.WithRenderable(enemyR),
 		entities.WithDrawLayers([]int{1, 2}),
 		entities.WithLabel(Enemy),
 	)
 
-	event.Bind(ctx, event.Enter, enemy, func(e *entities.Entity, ev event.EnterPayload) event.Response {
-		x, y := enemy.X(), enemy.Y()
+	event.Bind(ctx, event.Enter, hitbox, func(e *entities.Entity, ev event.EnterPayload) event.Response {
+		x, y := hitbox.X(), hitbox.Y()
 		pt := floatgeom.Point2{x, y}
 		pt2 := floatgeom.Point2{*playerX, *playerY}
 		delta := pt2.Sub(pt).Normalize().MulConst(EnemySpeed * ev.TickPercent)
-		enemy.Shift(delta)
+		hitbox.Shift(delta)
 
-		swtch := enemy.Renderable.(*render.Switch)
+		swtch := hitbox.Renderable.(*render.Switch)
 		if delta.X() > 0 {
 			if swtch.Get() == "left" {
 				swtch.Set("right")
@@ -207,7 +213,7 @@ func NewEnemy(ctx *scene.Context) {
 		return 0
 	})
 
-	event.Bind(ctx, destroy, enemy, func(e *entities.Entity, nothing struct{}) event.Response {
+	event.Bind(ctx, destroy, hitbox, func(e *entities.Entity, nothing struct{}) event.Response {
 		e.Destroy()
 		return 0
 	})
