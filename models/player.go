@@ -8,6 +8,7 @@ import (
 
 	oak "github.com/oakmound/oak/v4"
 	"github.com/oakmound/oak/v4/alg/floatgeom"
+	"github.com/oakmound/oak/v4/alg/intgeom"
 	"github.com/oakmound/oak/v4/collision/ray"
 	"github.com/oakmound/oak/v4/dlog"
 	"github.com/oakmound/oak/v4/entities"
@@ -18,14 +19,17 @@ import (
 	"github.com/oakmound/oak/v4/scene"
 )
 
-type Player struct {
-	Entity *entities.Entity
-	X      *float64
-	Y      *float64
-}
+const (
+	fieldWidth  = 1000
+	fieldHeight = 1000
+)
 
-// CreatePlayer crea un nuevo jugador y devuelve una estructura Player
-func CreatePlayer(ctx *scene.Context) *Player {
+var (
+	playerX *float64
+	playerY *float64
+)
+
+func CreatePlayer(ctx *scene.Context) *entities.Entity {
 	zeke, err := render.GetSprite("zeke-left.png")
 	dlog.ErrorCheck(err)
 
@@ -40,19 +44,14 @@ func CreatePlayer(ctx *scene.Context) *Player {
 		entities.WithDrawLayers([]int{1, 2}),
 	)
 
-	playerX := &char.Rect.Min[0]
-	playerY := &char.Rect.Min[1]
+	playerX = &char.Rect.Min[0]
+	playerY = &char.Rect.Min[1]
 
-	return &Player{
-		Entity: char,
-		X:      playerX,
-		Y:      playerY,
-	}
+	return char
 }
 
-// PlayerBehavior maneja el comportamiento del jugador
-func (p *Player) PlayerBehavior(ctx *scene.Context) {
-	event.Bind(ctx, event.Enter, p.Entity, func(char *entities.Entity, ev event.EnterPayload) event.Response {
+func PlayerBehavior(ctx *scene.Context, char *entities.Entity) {
+	event.Bind(ctx, event.Enter, char, func(char *entities.Entity, ev event.EnterPayload) event.Response {
 		if oak.IsDown(key.W) {
 			char.Delta[1] += (-char.Speed.Y() * ev.TickPercent)
 		}
@@ -96,7 +95,7 @@ func (p *Player) PlayerBehavior(ctx *scene.Context) {
 		return 0
 	})
 
-	event.Bind(ctx, mouse.Press, p.Entity, func(char *entities.Entity, mevent *mouse.Event) event.Response {
+	event.Bind(ctx, mouse.Press, char, func(char *entities.Entity, mevent *mouse.Event) event.Response {
 		x := char.X() + char.W()/2
 		y := char.Y() + char.H()/2
 		vp := ctx.Window.Viewport()
@@ -105,12 +104,26 @@ func (p *Player) PlayerBehavior(ctx *scene.Context) {
 		ray.DefaultCaster.CastDistance = floatgeom.Point2{x, y}.Sub(floatgeom.Point2{mx, my}).Magnitude()
 		hits := ray.CastTo(floatgeom.Point2{x, y}, floatgeom.Point2{mx, my})
 		for _, hit := range hits {
-			event.TriggerForCallerOn(ctx, hit.Zone.CID, destroy, struct{}{})
+			event.TriggerForCallerOn(ctx, hit.Zone.CID, Destroy, struct{}{})
 		}
 		ctx.DrawForTime(
 			render.NewLine(x, y, mx, my, color.RGBA{0, 128, 0, 128}),
 			time.Millisecond*50,
 			1, 2)
+		return 0
+	})
+}
+
+func Camera(ctx *scene.Context, char *entities.Entity) {
+	screenCenter := ctx.Window.Bounds().DivConst(2)
+	event.Bind(ctx, event.Enter, char, func(char *entities.Entity, ev event.EnterPayload) event.Response {
+		ctx.Window.(*oak.Window).DoBetweenDraws(func() {
+			char.ShiftDelta()
+			oak.SetViewport(
+				intgeom.Point2{int(char.X()), int(char.Y())}.Sub(screenCenter),
+			)
+			char.Delta = floatgeom.Point2{}
+		})
 		return 0
 	})
 }

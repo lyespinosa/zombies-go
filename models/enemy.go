@@ -13,12 +13,24 @@ import (
 	"github.com/oakmound/oak/v4/scene"
 )
 
-type Enemy struct {
-	Entity *entities.Entity
+const (
+	Enemy        = 1
+	EnemyRefresh = 60
+	EnemySpeed   = 2
+)
+
+var Destroy = event.RegisterEvent[struct{}]()
+
+func EnemyGenerator(ctx *scene.Context) {
+	event.GlobalBind(ctx, event.Enter, func(enterPayload event.EnterPayload) event.Response {
+		if enterPayload.FramesElapsed%EnemyRefresh == 0 {
+			go NewEnemy(ctx)
+		}
+		return 0
+	})
 }
 
-// NewEnemy crea un nuevo enemigo y devuelve una estructura Enemy
-func NewEnemy(ctx *scene.Context) *Enemy {
+func NewEnemy(ctx *scene.Context) {
 	x, y := enemyPos()
 
 	enemyFrame, err := render.GetSprite("zombie-right.png")
@@ -34,21 +46,14 @@ func NewEnemy(ctx *scene.Context) *Enemy {
 		entities.WithLabel(Enemy),
 	)
 
-	return &Enemy{
-		Entity: hitbox,
-	}
-}
-
-// EnemyBehavior maneja el comportamiento del enemigo
-func (e *Enemy) EnemyBehavior(ctx *scene.Context) {
-	event.Bind(ctx, event.Enter, e.Entity, func(e *entities.Entity, ev event.EnterPayload) event.Response {
-		x, y := e.X(), e.Y()
+	event.Bind(ctx, event.Enter, hitbox, func(e *entities.Entity, ev event.EnterPayload) event.Response {
+		x, y := hitbox.X(), hitbox.Y()
 		pt := floatgeom.Point2{x, y}
 		pt2 := floatgeom.Point2{*playerX, *playerY}
 		delta := pt2.Sub(pt).Normalize().MulConst(EnemySpeed * ev.TickPercent)
-		e.Shift(delta)
+		hitbox.Shift(delta)
 
-		swtch := e.Renderable.(*render.Switch)
+		swtch := hitbox.Renderable.(*render.Switch)
 		if delta.X() > 0 {
 			if swtch.Get() == "left" {
 				swtch.Set("right")
@@ -61,7 +66,7 @@ func (e *Enemy) EnemyBehavior(ctx *scene.Context) {
 		return 0
 	})
 
-	event.Bind(ctx, destroy, e.Entity, func(e *entities.Entity, nothing struct{}) event.Response {
+	event.Bind(ctx, Destroy, hitbox, func(e *entities.Entity, nothing struct{}) event.Response {
 		e.Destroy()
 		return 0
 	})
