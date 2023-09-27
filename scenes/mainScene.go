@@ -6,34 +6,34 @@ import (
 
 	oak "github.com/oakmound/oak/v4"
 	"github.com/oakmound/oak/v4/alg/intgeom"
-	"github.com/oakmound/oak/v4/collision"
 	"github.com/oakmound/oak/v4/dlog"
 	"github.com/oakmound/oak/v4/render"
 	"github.com/oakmound/oak/v4/scene"
 )
 
 var (
-	sheet [][]*render.Sprite
+	sheet  [][]*render.Sprite
+	enemy  *models.Enemy
+	player *models.Player
 )
 
 const (
-	Enemy collision.Label = 1
-
 	fieldWidth  = 1000
 	fieldHeight = 1000
-
-	EnemyRefresh = 60
-	EnemySpeed   = 2
 )
 
 func StartGame(ctx *scene.Context) {
 
+	player = models.NewPlayer(ctx)
+	playerCreated := player.CreatePlayer()
+	enemy = models.NewEnemy(ctx)
+
 	generateGround()
 
-	char := models.CreatePlayer(ctx)
-	go models.PlayerBehavior(ctx, char)
-	go models.Camera(ctx, char)
-	go models.EnemyGenerator(ctx)
+	go models.PlayerBehavior(ctx, playerCreated)
+	go models.Camera(ctx, playerCreated)
+
+	go enemy.EnemyGenerator()
 
 }
 

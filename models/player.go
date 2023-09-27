@@ -13,6 +13,7 @@ import (
 	"github.com/oakmound/oak/v4/dlog"
 	"github.com/oakmound/oak/v4/entities"
 	"github.com/oakmound/oak/v4/event"
+
 	"github.com/oakmound/oak/v4/key"
 	"github.com/oakmound/oak/v4/mouse"
 	"github.com/oakmound/oak/v4/render"
@@ -29,25 +30,35 @@ var (
 	playerY *float64
 )
 
-func CreatePlayer(ctx *scene.Context) *entities.Entity {
-	zeke, err := render.GetSprite("zeke-left.png")
+type Player struct {
+	ctx *scene.Context
+}
+
+func NewPlayer(ctx *scene.Context) *Player {
+	return &Player{
+		ctx: ctx,
+	}
+}
+
+func (p *Player) CreatePlayer() *entities.Entity {
+	zeke, err := render.GetSprite("zeke-pistol.png")
 	dlog.ErrorCheck(err)
 
 	playerR := render.NewSwitch("left", map[string]render.Modifiable{
-		"left":  zeke,
-		"right": zeke.Copy().Modify(mod.FlipX),
+		"left":  zeke.Copy().Modify(mod.FlipX),
+		"right": zeke,
 	})
-	char := entities.New(ctx,
+	player := entities.New(p.ctx,
 		entities.WithRect(floatgeom.NewRect2WH(100, 100, 12, 35)),
 		entities.WithRenderable(playerR),
 		entities.WithSpeed(floatgeom.Point2{3, 3}),
 		entities.WithDrawLayers([]int{1, 2}),
 	)
 
-	playerX = &char.Rect.Min[0]
-	playerY = &char.Rect.Min[1]
+	playerX = &player.Rect.Min[0]
+	playerY = &player.Rect.Min[1]
 
-	return char
+	return player
 }
 
 func PlayerBehavior(ctx *scene.Context, char *entities.Entity) {
@@ -76,7 +87,7 @@ func PlayerBehavior(ctx *scene.Context, char *entities.Entity) {
 			char.SetY(fieldHeight - char.H())
 		}
 
-		hit := char.HitLabel(Enemy)
+		hit := char.HitLabel(EnemyLabel)
 		if hit != nil {
 			ctx.Window.NextScene()
 		}

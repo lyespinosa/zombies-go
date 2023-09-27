@@ -14,23 +14,33 @@ import (
 )
 
 const (
-	Enemy        = 1
+	EnemyLabel   = 1
 	EnemyRefresh = 60
 	EnemySpeed   = 2
 )
 
 var Destroy = event.RegisterEvent[struct{}]()
 
-func EnemyGenerator(ctx *scene.Context) {
-	event.GlobalBind(ctx, event.Enter, func(enterPayload event.EnterPayload) event.Response {
+type Enemy struct {
+	ctx *scene.Context
+}
+
+func NewEnemy(ctx *scene.Context) *Enemy {
+	return &Enemy{
+		ctx: ctx,
+	}
+}
+
+func (enemy *Enemy) EnemyGenerator() {
+	event.GlobalBind(enemy.ctx, event.Enter, func(enterPayload event.EnterPayload) event.Response {
 		if enterPayload.FramesElapsed%EnemyRefresh == 0 {
-			go NewEnemy(ctx)
+			go CreateEnemy(enemy.ctx)
 		}
 		return 0
 	})
 }
 
-func NewEnemy(ctx *scene.Context) {
+func CreateEnemy(ctx *scene.Context) {
 	x, y := enemyPos()
 
 	enemyFrame, err := render.GetSprite("zombie-right.png")
@@ -43,7 +53,7 @@ func NewEnemy(ctx *scene.Context) {
 		entities.WithRect(floatgeom.NewRect2WH(x, y, 30, 45)),
 		entities.WithRenderable(enemyR),
 		entities.WithDrawLayers([]int{1, 2}),
-		entities.WithLabel(Enemy),
+		entities.WithLabel(EnemyLabel),
 	)
 
 	event.Bind(ctx, event.Enter, hitbox, func(e *entities.Entity, ev event.EnterPayload) event.Response {
